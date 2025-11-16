@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ToDoList</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="topbar">
+    <div class="app-title">Tasks</div>
+    <div class="top-controls">
+      <div class="muted small" id="countLists">0 lists</div>
+    </div>
+  </div>
+
+  <main class="app" id="app">
+    <aside class="sidebar" aria-label="Lists panel">
+      <div class="sidebar-head">
+        <div class="title">Lists</div>
+      </div>
+
+      <div class="new-list">
+        <input id="newListName" placeholder="New list name" aria-label="New list name" maxlength="40">
+        <button id="addListBtn" class="primary">Create</button>
+      </div>
+
+      <div class="lists" id="listsContainer" role="list"></div>
+
+      <div class="sidebar-foot">
+        <button id="clearAllBtn" class="clear-pill">Clear All Data</button>
+      </div>
+    </aside>
+
+    <section class="main" aria-label="Tasks panel">
+      <header class="list-head">
+        <div>
+          <div class="list-name" id="activeListName">No list selected</div>
+          <div class="muted small" id="activeMeta">—</div>
+        </div>
+        <div class="head-controls">
+          <button id="renameListBtn" class="icon-btn" title="Rename list">Rename</button>
+          <button id="deleteListBtn" class="icon-btn danger" title="Delete list">Delete</button>
+        </div>
+      </header>
+
+      <div class="task-controls">
+        <input id="newTaskText" class="task-input" placeholder="What needs doing?" aria-label="New task">
+        <button id="addTaskBtn" class="fab" title="Add task">✍️</button>
+      </div>
+
+      <div id="tasksContainer" class="tasks" role="list"></div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
