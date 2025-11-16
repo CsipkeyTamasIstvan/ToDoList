@@ -31,11 +31,13 @@ const emptyState = document.getElementById('emptyState') || null;
 const clearAllBtn = document.getElementById('clearAllBtn');
 
 function init(){
-  if(!state.lists.length){
-    const id = uid();
-    state.activeListId = id;
+  if(!state || !Array.isArray(state.lists)) state = { lists: [], activeListId: null };
+
+  if((state.activeListId == null || !findList(state.activeListId)) && state.lists.length){
+    state.activeListId = state.lists[0].id;
     saveData(state);
   }
+
   render();
   attachEvents();
 }
@@ -80,27 +82,23 @@ function renderLists(){
 }
 
 function renderTasks(){
-  if(!tasksContainer) return;
+  if (!tasksContainer) return;
+
   const list = findList(state.activeListId);
-  if(!list){
-    if(activeListName) activeListName.textContent = 'No list selected';
-    if(activeMeta) activeMeta.textContent = '—';
+  if (!list) {
+    if (activeListName) activeListName.textContent = 'No list selected';
+    if (activeMeta) activeMeta.textContent = '—';
     tasksContainer.innerHTML = '';
-    if(emptyState) emptyState.hidden = false;
+    if (emptyState) emptyState.hidden = false;
     return;
   }
-  if(activeListName) activeListName.textContent = list.name;
-  const doneCount = list.tasks.filter(t=>t.done).length;
-  if(activeMeta) activeMeta.textContent = `${doneCount}/${list.tasks.length} done`;
+
+  if (activeListName) activeListName.textContent = list.name;
+  if (activeMeta) activeMeta.textContent = `${list.tasks.filter(t=>t.done).length}/${list.tasks.length} done`;
   tasksContainer.innerHTML = '';
+  if (emptyState) emptyState.hidden = list.tasks.length > 0;
 
-  if(!list.tasks.length){
-    if(emptyState) emptyState.hidden = false;
-    return;
-  }
-  if(emptyState) emptyState.hidden = true;
-
-  list.tasks.forEach(task=>{
+  list.tasks.forEach(task => {
     const t = document.createElement('div');
     t.className = 'task';
     t.setAttribute('role','listitem');
@@ -120,30 +118,26 @@ function renderTasks(){
     `;
 
     const handle = t.querySelector('.drag-handle');
-    if(handle){
-      handle.addEventListener('mousedown', (e) => { e.stopPropagation(); t.draggable = true; });
-      handle.addEventListener('keydown', (e) => {
-        if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); t.draggable = true; draggedTaskId = t.dataset.id; }
+    if (handle) {
+      handle.addEventListener('mousedown', e => { e.stopPropagation(); t.draggable = true; });
+      handle.addEventListener('keydown', e => {
+        if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); t.draggable = true; draggedTaskId = t.dataset.id; }
       });
     }
 
-    t.addEventListener('dragstart', (e) => {
+    t.addEventListener('dragstart', e => {
       draggedTaskId = t.dataset.id;
-      e.dataTransfer.effectAllowed = 'move';
-      try{ e.dataTransfer.setData('text/plain', t.dataset.id); }catch(_){}
+      e.dataTransfer && e.dataTransfer.setData && (() => { try { e.dataTransfer.setData('text/plain', t.dataset.id); } catch(_){} })();
       t.classList.add('dragging');
     });
-
-    t.addEventListener('dragover', (e) => { e.preventDefault(); t.classList.add('drag-over'); });
-    t.addEventListener('dragleave', () => { t.classList.remove('drag-over'); });
-
-    t.addEventListener('drop', (e) => {
+    t.addEventListener('dragover', e => { e.preventDefault(); t.classList.add('drag-over'); });
+    t.addEventListener('dragleave', () => t.classList.remove('drag-over'));
+    t.addEventListener('drop', e => {
       e.preventDefault(); e.stopPropagation();
       t.classList.remove('drag-over');
       const targetId = t.dataset.id;
-      if(draggedTaskId && targetId) reorderTasks(draggedTaskId, targetId);
+      if (draggedTaskId && targetId) reorderTasks(draggedTaskId, targetId);
     });
-
     t.addEventListener('dragend', () => { t.draggable = false; draggedTaskId = null; t.classList.remove('dragging'); });
 
     tasksContainer.appendChild(t);
@@ -157,31 +151,12 @@ function getListColor(id){
 }
 
 function attachEvents(){
-  if(eventsAttached) return; eventsAttached = true;
+  if(eventsAttached) return;
+  eventsAttached = true;
 
-  if(addListBtn) addListBtn.addEventListener('click', onAddList);
-  if(newListName) newListName.addEventListener('keydown', e=>{ if(e.key==='Enter') onAddList(); });
+  if (tasksContainer) {
+    tasksContainer.addEventListener('click', onTasksClick);
 
-  if(listsContainer){
-    listsContainer.addEventListener('click', (e) => {
-      const delBtn = e.target.closest('button[data-action="delete"]');
-      if (delBtn) { onListsClick(e); return; }
-      const li = e.target.closest('.list-item');
-      if (li && li.dataset && li.dataset.id) setActive(li.dataset.id);
-    });
-    listsContainer.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        const li = e.target.closest('.list-item');
-        if (li && li.dataset && li.dataset.id) setActive(li.dataset.id);
-      }
-    });
-  }
-
-  if(addTaskBtn) addTaskBtn.addEventListener('click', onAddTask);
-  if(newTaskText) newTaskText.addEventListener('keydown', e=>{ if(e.key==='Enter') onAddTask(); });
-  if(tasksContainer) tasksContainer.addEventListener('click', onTasksClick);
-
-  if(tasksContainer){
     tasksContainer.addEventListener('dragover', (e) => { e.preventDefault(); });
     tasksContainer.addEventListener('drop', (e) => {
       e.preventDefault();
@@ -202,6 +177,27 @@ function attachEvents(){
       document.querySelectorAll('.task[draggable="true"]').forEach(el => el.draggable = false);
     });
   }
+
+  if(addListBtn) addListBtn.addEventListener('click', onAddList);
+  if(newListName) newListName.addEventListener('keydown', e => { if(e.key === 'Enter') onAddList(); });
+
+  if(listsContainer){
+    listsContainer.addEventListener('click', (e) => {
+      const delBtn = e.target.closest('button[data-action="delete"]');
+      if (delBtn) { onListsClick(e); return; }
+      const li = e.target.closest('.list-item');
+      if (li && li.dataset && li.dataset.id) setActive(li.dataset.id);
+    });
+    listsContainer.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const li = e.target.closest('.list-item');
+        if (li && li.dataset && li.dataset.id) setActive(li.dataset.id);
+      }
+    });
+  }
+
+  if(addTaskBtn) addTaskBtn.addEventListener('click', onAddTask);
+  if(newTaskText) newTaskText.addEventListener('keydown', e=>{ if(e.key==='Enter') onAddTask(); });
 
   if(deleteListBtn) deleteListBtn.addEventListener('click', ()=>{
     if(!state.activeListId) return;
@@ -266,23 +262,6 @@ function onAddTask(){
   newTaskText.value = '';
   saveData(state);
   render();
-}
-
-function onTasksClick(e){
-  const check = e.target.closest('.check');
-  const btn = e.target.closest('button[data-action]');
-  if(check){
-    const tid = check.dataset.id;
-    toggleTaskDone(tid);
-    return;
-  }
-  if(btn){
-    const action = btn.dataset.action;
-    const tid = btn.dataset.id;
-    if(action==='delete'){
-      deleteTask(tid);
-    }
-  }
 }
 
 function toggleTaskDone(taskId){
@@ -394,6 +373,30 @@ function hideUndoToast() {
   const toast = document.getElementById('undoToast');
   if (!toast) return;
   toast.classList.remove('show');
+}
+
+function onTasksClick(e){
+  const check = e.target.closest('.check');
+  if (check) {
+    const tid = check.dataset.id;
+    toggleTaskDone(tid);
+    return;
+  }
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+
+  const action = btn.dataset.action;
+  const tid = btn.dataset.id;
+
+  if (action === 'delete') {
+    deleteTask(tid);
+    return;
+  }
+
+  if (action === 'edit') {
+    editTask(tid);
+    return;
+  }
 }
 
 init();
